@@ -151,27 +151,6 @@ def distributed_inference(segments, input_image, warmup=1, iterations=1):
     return output, timings
 
 
-def main():
-    segments = split_vit(pretrained=True)
-    image_path = '../pic/Cat03.jpg'
 
-    try:
-        input_image = load_and_preprocess_image(image_path)
-        print(f"成功加载图片: {image_path}")
-    except Exception as e:
-        print(f"图片加载失败: {e}")
-
-
-    output, timings = distributed_inference(segments, input_image)
-    averages = {key: sum(value) / len(value) for key, value in timings.items()}
-    for seg, time in averages.items():
-        print(f"{seg}: {time:.2f} ms")
-
-    classes = get_imagenet_classes()
-    prob = F.softmax(output, dim=1)
-    top5_prob, top5_idx = prob.topk(5)
-
-    for i in range(5):
-        print(f"{classes[top5_idx[0][i]]:>20s}: {top5_prob[0][i]:.3f}")
 
 
