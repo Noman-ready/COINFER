@@ -53,7 +53,3 @@ def exhaustive_search():
 
 
 if __name__ == '__main__':
-    start = time.time()
-    best_ex, best_assign_ex = exhaustive_search()
-    end = time.time()
-    print(f'Exhaustive Search Time: {end - start:.4f}s')
