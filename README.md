@@ -1,4 +1,4 @@
-    # IWQoS2026-COINFER:Breaking the Resource Wall for Collaborative Edge Inference
+    # COINFER
 
 
 ## Abstract
