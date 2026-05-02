@@ -30,54 +30,8 @@ class EnergyAwareTaskScheduler:
         self._edge_weight_cache = {}
 
         self.f_vec = np.array(self.f_max)
-        self.R_base = np.zeros((M, M))
-        for m in range(M):
-            for n in range(M):
-                if m != n and E_conn[m, n] > 0:
-                    snr = P_tx[m, n] * G[m, n] / (sigma ** 2)
-                    self.R_base[m, n] = BW_max * np.log2(1 + snr)
         self.update_matrices()
 
-    def update_matrices(self):
-        self.T_comp = (self.f_vec.reshape(1, -1) / self.f_max.reshape(1, -1)) * self.T_active
-        self.P_comp = self.k_m * (self.f_vec ** 3)
-        self.E_comp_mat = np.zeros((self.S, self.M))
-        for s in range(self.S):
-            for m in range(self.M):
-                self.E_comp_mat[s, m] = self.P_comp[m] * self.T_comp[s, m]
-
-        self.c_k_min = np.zeros(self.S)
-        for k in range(self.S):
-            comp_term = self.alpha * self.T_comp[k, :] + self.beta * (self.P_comp * self.T_comp[k, :])
-            self.c_k_min[k] = np.min(comp_term)
-
-        self.t_k_min = np.zeros(self.S - 1)
-        for k in range(self.S - 1):
-            best = np.inf
-            for i in range(self.M):
-                for j in range(self.M):
-                    if i == j:
-                        cand = 0.0
-                        best = min(best, cand)
-                    elif self.E_conn[i, j] > 0:
-                        R = self.R_base[i, j]
-                        if R <= 0:
-                            continue
-                        t_trans = self.D_s[k] / R + self.L[i, j]
-                        e_trans = self.P_tx[i, j] * t_trans
-                        cand = self.alpha * t_trans + self.beta * e_trans
-                        best = min(best, cand)
-            self.t_k_min[k] = best if best < np.inf else 0.0
-
-        self.c_k_min_suffix = np.zeros(self.S + 1)
-        self.t_k_min_suffix = np.zeros(self.S + 1)
-        for k in range(self.S - 1, -1, -1):
-            self.c_k_min_suffix[k] = self.c_k_min[k] + self.c_k_min_suffix[k + 1]
-        for k in range(self.S - 2, -1, -1):
-            self.t_k_min_suffix[k] = self.t_k_min[k] + self.t_k_min_suffix[k + 1]
-
-        self._heuristic_cache.clear()
-        self._edge_weight_cache.clear()
 
     def set_frequencies(self, f_vec):
         self.f_vec = np.array(f_vec)
@@ -161,10 +115,6 @@ class EnergyAwareTaskScheduler:
             s_next, m_next = path[i + 1]
             if m_cur != m_next and self.E_conn[m_cur, m_next] > 0:
                 R = self.R_base[m_cur, m_next]
-                # if R <= 0:
-                #     return {"objective_value": np.inf,
-                #             "T_comp": np.inf, "T_trans": np.inf, "E_comp": np.inf, "E_trans": np.inf,
-                #             "T_total": np.inf, "E_total": np.inf}
                 t_trans = self.D_s[s_cur - 1] / R + self.L[m_cur, m_next]
                 e_trans = self.P_tx[m_cur, m_next] * t_trans
                 T_trans_total += t_trans
@@ -206,18 +156,3 @@ def custom_astar(graph, start, end, heuristic_func):
                 f_score = tentative + heuristic_func(neighbor)
                 heapq.heappush(open_set, (f_score, neighbor))
     raise RuntimeError("No path")
-
-
-if __name__ == '__main__':
-    S, M, f_max, k_m, T_active, D_s, Mem_req, Mem_avail, BW_max, sigma, P_tx, G, L, E_conn = initialize_parameters()
-
-    alpha = 0.5
-    beta = 0.5
-    start_time = time.time()
-    scheduler = EnergyAwareTaskScheduler(S, M, f_max, k_m, T_active, D_s,
-                                         Mem_req, Mem_avail, BW_max, sigma,
-                                         P_tx, G, L, E_conn,
-                                         alpha=alpha, beta=beta)
-    astar_start = time.time()
-    best_value_astar, best_path_astar, best_res_astar = scheduler.solve_astar()
-    astar_time = time.time() - astar_start
